@@ -1,0 +1,8 @@
+{
+  "name": "proxima",
+  "private": true,
+  "workspaces": [
+    "client",
+    "server"
+  ]
+} 
