@@ -1,5 +1,5 @@
 import React, { useState, createContext, useContext } from "react";
-import { Cog6ToothIcon, HomeIcon, FlagIcon, ChartBarIcon, ArrowRightOnRectangleIcon } from "@heroicons/react/24/outline";
+import { UserCircleIcon, HomeIcon, FlagIcon, ChartBarIcon, ArrowRightOnRectangleIcon } from "@heroicons/react/24/outline";
 import { UserContext } from "./UserContext";
 import FinancialInputs from "./FinancialInputs";
 
@@ -57,6 +57,7 @@ const Sidebar = ({ activeSection, setActiveSection }) => {
 };
 
 const Topbar = ({ income, setIncome, currentSavings, setCurrentSavings, effectiveSavings }) => {
+  const { setActiveSection } = useContext(SectionContext);
   return (
     <header className="flex items-center justify-between px-8 py-4 bg-white shadow-sm">
       <h1 className="text-2xl font-bold tracking-tight text-primary">Proxima</h1>
@@ -68,7 +69,11 @@ const Topbar = ({ income, setIncome, currentSavings, setCurrentSavings, effectiv
           onSavingsChange={setCurrentSavings}
           effectiveSavings={effectiveSavings}
         />
-        <Cog6ToothIcon className="h-7 w-7 text-gray-400 cursor-pointer hover:text-gray-600 transition-colors duration-200" />
+        <UserCircleIcon 
+          className="h-8 w-8 text-gray-400 cursor-pointer hover:text-gray-600 transition-colors duration-200" 
+          onClick={() => setActiveSection("profile")}
+          title="Profile"
+        />
       </div>
     </header>
   );

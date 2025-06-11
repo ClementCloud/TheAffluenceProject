@@ -5,9 +5,12 @@ import GoalForm from "./components/GoalForm";
 import Overview from "./components/Overview";
 import Welcome from "./components/Welcome";
 import GoalWizard from "./components/GoalWizard";
+import ProfilePage from "./components/ProfilePage";
 import { UserProvider, UserContext } from "./components/UserContext";
 import LoginForm from "./components/LoginForm";
 import FinancialInputs from "./components/FinancialInputs";
+import TutorialOverlay from "./components/TutorialOverlay";
+import NameAgePrompt from "./components/NameAgePrompt";
 
 const API_URL = "http://localhost:3001/api";
 
@@ -269,6 +272,8 @@ const AppContent = ({ user, logout, income, setIncome, currentSavings, setCurren
         fundedGoals={fundedGoalsSet}
       />
     );
+  } else if (activeSection === "profile") {
+    content = <ProfilePage />;
   } else if (activeSection === "goalwizard") {
     content = (
       <GoalWizard
@@ -318,18 +323,41 @@ const AppWithAuth = () => {
   const [income, setIncome] = useState({ monthlyDisposableIncome: 0 });
   const [currentSavings, setCurrentSavings] = useState(0);
   const [effectiveSavings, setEffectiveSavings] = useState(0);
+  const [showTutorial, setShowTutorial] = useState(false);
+  const [showNamePrompt, setShowNamePrompt] = useState(false);
 
   // Load saved values when user is available
   useEffect(() => {
     if (user?.id) {
+      // Fetch profile to decide if name/age provided
+      fetch(`/api/users/me`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      })
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data && (!data.name || !data.age)) {
+            setShowNamePrompt(true);
+          }
+        })
+        .catch(()=>{});
+
+      // Decide if we should show tutorial
+      const tutorialDone = localStorage.getItem(`tutorialCompleted_${user.id}`) === "true";
+      setShowTutorial(!tutorialDone);
+
       const savedIncome = localStorage.getItem(`income_${user.id}`);
       const savedSavings = localStorage.getItem(`currentSavings_${user.id}`);
       
       if (savedIncome) {
         setIncome(JSON.parse(savedIncome));
+      } else {
+        setIncome({ monthlyDisposableIncome: 0 });
       }
+
       if (savedSavings) {
         setCurrentSavings(parseFloat(savedSavings));
+      } else {
+        setCurrentSavings(0);
       }
     }
   }, [user?.id]);
@@ -357,24 +385,53 @@ const AppWithAuth = () => {
   }
 
   return (
-    <Layout 
-      income={income} 
-      setIncome={setIncome}
-      currentSavings={currentSavings}
-      setCurrentSavings={setCurrentSavings}
-      effectiveSavings={effectiveSavings}
-    >
-      <AppContent 
-        user={user}
-        logout={logout}
+    <>
+      <Layout 
         income={income} 
         setIncome={setIncome}
         currentSavings={currentSavings}
         setCurrentSavings={setCurrentSavings}
         effectiveSavings={effectiveSavings}
-        setEffectiveSavings={setEffectiveSavings}
-      />
-    </Layout>
+      >
+        <AppContent 
+          user={user}
+          logout={logout}
+          income={income} 
+          setIncome={setIncome}
+          currentSavings={currentSavings}
+          setCurrentSavings={setCurrentSavings}
+          effectiveSavings={effectiveSavings}
+          setEffectiveSavings={setEffectiveSavings}
+        />
+      </Layout>
+      {showTutorial && (
+        <TutorialOverlay
+          onFinish={() => {
+            if (user?.id) {
+              localStorage.setItem(`tutorialCompleted_${user.id}`, "true");
+            }
+            setShowTutorial(false);
+          }}
+        />
+      )}
+      {showNamePrompt && (
+        <NameAgePrompt
+          onSave={async ({name, age}) => {
+            try {
+              await fetch('/api/users/me', {
+                method: 'PUT',
+                headers: { 
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
+                body: JSON.stringify({ name, age })
+              });
+            } catch(_){}
+            setShowNamePrompt(false);
+          }}
+        />
+      )}
+    </>
   );
 };
 

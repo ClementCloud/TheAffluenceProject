@@ -80,18 +80,43 @@ class Plan {
 }
 
 export default function Overview({ goals = [], income = { monthlyDisposableIncome: 0 }, currentSavings = 0, effectiveSavings, fundedGoals = new Set() }) {
-  // Apply funded overrides to saved amounts
-  const effectiveGoals = useMemo(() => {
+  // Apply funded overrides to saved amounts first (funded → saved = amount)
+  const baseGoals = useMemo(() => {
     if (!fundedGoals || typeof fundedGoals.has !== 'function') return goals;
     return goals.map(g => fundedGoals.has(g.id) ? { ...g, saved: g.amount } : g);
   }, [goals, fundedGoals]);
 
   const savingsToUse = typeof effectiveSavings === 'number' ? effectiveSavings : currentSavings;
 
-  const plan = useMemo(() => new Plan(effectiveGoals, income.monthlyDisposableIncome, savingsToUse), [effectiveGoals, income, savingsToUse]);
-  
+  // Distribute the user's total savings across the goals by priority so each goal gets an "appliedSaved" amount.
+  const distributedGoals = useMemo(() => {
+    const sorted = [...baseGoals].sort((a, b) => (a.priority || 0) - (b.priority || 0));
+    let remaining = savingsToUse;
+
+    const distributed = sorted.map(g => {
+      // If already fully funded (because of funded checkbox) keep full amount as saved
+      if (fundedGoals.has(g.id)) {
+        return { ...g, appliedSaved: g.amount };
+      }
+
+      const applied = Math.min(g.amount, remaining);
+      remaining -= applied;
+      return { ...g, appliedSaved: applied };
+    });
+
+    // Restore original order
+    const mapById = Object.fromEntries(distributed.map(g => [g.id, g]));
+    return baseGoals.map(g => mapById[g.id]);
+  }, [baseGoals, savingsToUse, fundedGoals]);
+
+  // Feed distributed goals into Plan (use appliedSaved as the saved field)
+  const planGoals = useMemo(() => distributedGoals.map(g => ({ ...g, saved: g.appliedSaved })), [distributedGoals]);
+
+  const plan = useMemo(() => new Plan(planGoals, income.monthlyDisposableIncome, savingsToUse), [planGoals, income, savingsToUse]);
+
+  // Build chart data using the distributed savings so Remaining Amount reflects goal.target - appliedSaved
   const monthlySavingsData = useMemo(() => {
-    return plan.goals.map(goal => {
+    return planGoals.map(goal => {
       const remaining = Math.max((goal.amount || 0) - (goal.saved || 0), 0);
       return {
         name: goal.name,
@@ -99,7 +124,7 @@ export default function Overview({ goals = [], income = { monthlyDisposableIncom
         'Monthly Allocation': plan.monthlyAllocations[goal.id] || 0,
       };
     });
-  }, [plan]);
+  }, [planGoals, plan]);
 
   const totalTargetAmount = plan.totalSavingsNeeded;
   const shortfall = Math.max(0, plan.totalMonthlyNeeded - plan.disposableIncome);
