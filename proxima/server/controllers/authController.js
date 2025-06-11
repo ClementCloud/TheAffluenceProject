@@ -19,6 +19,8 @@ export const register = async (req, res) => {
       id: Date.now().toString(), 
       email, 
       password: hash,
+      name: "",
+      age: null,
       createdAt: new Date().toISOString()
     };
 

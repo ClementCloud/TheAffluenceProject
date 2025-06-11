@@ -113,6 +113,19 @@ const Dashboard = ({ goals, income, currentSavings = 0, totalMonthlyNeeded, onSh
       } else {
         next.delete(goal.id);
       }
+
+      // --- Immediately inform parent of the new effective savings ---
+      if (typeof onAdjustedSavingsChange === 'function') {
+        const totalRemoved = localGoals.reduce((sum, g) => next.has(g.id) ? sum + g.amount : sum, 0);
+        const recalculated = Math.max(0, currentSavings - totalRemoved);
+        onAdjustedSavingsChange(recalculated);
+      }
+
+      // Also bubble the funded-set up without waiting for the useEffect cycle
+      if (typeof onFundedGoalsChange === 'function') {
+        onFundedGoalsChange(next);
+      }
+
       return next;
     });
   };

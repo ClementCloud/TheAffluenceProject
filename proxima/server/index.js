@@ -6,6 +6,7 @@ import cors from "cors";
 import planRoutes from "./routes/planRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import goalsRoutes from "./routes/goalsRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
 
 const app = express();
 
@@ -26,6 +27,7 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/plans", planRoutes);
 app.use("/api/goals", goalsRoutes);
+app.use("/api/users", userRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
